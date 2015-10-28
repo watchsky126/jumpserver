@@ -90,11 +90,8 @@ def log_record(username, host):
     log_file_path = os.path.join(today_connect_log_dir, log_filename)
     dept_name = User.objects.get(username=username).dept.name
     pid = os.getpid()
-    ip_list = []
-    remote_ip = os.popen("who |grep `ps aux |gawk '{if ($2==%s) print $1}'` |gawk '{print $5}'|tr -d '()'" % pid).readlines()
-    for ip in remote_ip:
-        ip_list.append(ip.strip('\n'))
-    ip_list = ','.join(list(set(ip_list)))
+    pts = os.popen("ps axu | awk '$2==%s{ print $7 }'" % pid).read().strip()
+    ip_list = os.popen("who | awk '$2==\"%s\"{ print $5 }'" % pts).read().strip('()\n')
 
     if not os.path.isdir(today_connect_log_dir):
         try:
@@ -134,7 +131,7 @@ def posix_shell(chan, username, host):
 
             if chan in r:
                 try:
-                    x = chan.recv(1024)
+                    x = chan.recv(10240)
                     if len(x) == 0:
                         break
                     sys.stdout.write(x)
@@ -261,7 +258,7 @@ def connect(username, password, host, port, login_name):
     """
     Connect server.
     """
-    ps1 = "PS1='[\u@%s \W]\$ '\n" % host
+    ps1 = "PS1='[\u@%s \W]\$ ' && TERM=xterm && export TERM\n" % host
     login_msg = "clear;echo -e '\\033[32mLogin %s done. Enjoy it.\\033[0m'\n" % host
 
     # Make a ssh connection

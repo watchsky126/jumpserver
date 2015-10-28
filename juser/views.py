@@ -123,6 +123,10 @@ def server_del_user(username):
 
 
 def ldap_add_user(username, ldap_pwd):
+    if LDAP_ENABLE:
+        ldap_conn = LDAPMgmt(LDAP_HOST_URL, LDAP_BASE_DN, LDAP_ROOT_DN, LDAP_ROOT_PW)
+    else:
+        return
     user_dn = "uid=%s,ou=People,%s" % (username, LDAP_BASE_DN)
     password_sha512 = gen_sha512(gen_rand_pwd(6), ldap_pwd)
     user = User.objects.filter(username=username)
@@ -155,6 +159,10 @@ def ldap_add_user(username, ldap_pwd):
 
 
 def ldap_del_user(username):
+    if LDAP_ENABLE:
+        ldap_conn = LDAPMgmt(LDAP_HOST_URL, LDAP_BASE_DN, LDAP_ROOT_DN, LDAP_ROOT_PW)
+    else:
+        return
     user_dn = "uid=%s,ou=People,%s" % (username, LDAP_BASE_DN)
     group_dn = "cn=%s,ou=Group,%s" % (username, LDAP_BASE_DN)
     sudo_dn = 'cn=%s,ou=Sudoers,%s' % (username, LDAP_BASE_DN)
@@ -655,8 +663,11 @@ def user_add(request):
                 except Exception:
                     pass
             else:
-                send_mail(mail_title, mail_msg, MAIL_FROM, [email], fail_silently=False)
-                msg = u'添加用户 %s 成功！ 用户密码已发送到 %s 邮箱！' % (username, email)
+                try:
+                    send_mail(mail_title, mail_msg, MAIL_FROM, [email], fail_silently=False)
+                    msg = u'添加用户 %s 成功！ 用户密码已发送到 %s 邮箱！' % (username, email)
+                except:
+                    msg = u'添加用户 %s 成功！ 用户密码发送失败，请检查邮箱是否正确！' % username
     return render_to_response('juser/user_add.html', locals(), context_instance=RequestContext(request))
 
 
@@ -804,8 +815,8 @@ def user_detail(request):
     if user:
         user = user[0]
         asset_group_permed = user_perm_group_api(user)
-        logs_last = Log.objects.filter(user=user.name).order_by('-start_time')[0:10]
-        logs_all = Log.objects.filter(user=user.name).order_by('-start_time')
+        logs_last = Log.objects.filter(user=user.username).order_by('-start_time')[0:10]
+        logs_all = Log.objects.filter(user=user.username).order_by('-start_time')
         logs_num = len(logs_all)
 
     return render_to_response('juser/user_detail.html', locals(), context_instance=RequestContext(request))
